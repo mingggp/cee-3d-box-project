@@ -38,17 +38,7 @@ export default function NetSelector({ activeNetId, setActiveNetId, netFlipX, net
     if (node.children) {
       node.children.forEach(child => {
         let nx = x, ny = y;
-        
-        // Compute logical edge based on flips, just like the 3D Engine will
         let logicalEdge = child.edge;
-        if (netFlipX) {
-          if (logicalEdge === 'left') logicalEdge = 'right';
-          else if (logicalEdge === 'right') logicalEdge = 'left';
-        }
-        if (netFlipY) {
-          if (logicalEdge === 'top') logicalEdge = 'bottom';
-          else if (logicalEdge === 'bottom') logicalEdge = 'top';
-        }
 
         if (logicalEdge === 'bottom') ny += 1;
         if (logicalEdge === 'top') ny -= 1;

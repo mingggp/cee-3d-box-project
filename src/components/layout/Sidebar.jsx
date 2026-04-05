@@ -1,10 +1,11 @@
-import { Cuboid, PaintBucket, Download, Settings, SlidersHorizontal, ImagePlus, Trash2, FlipHorizontal, FlipVertical, RotateCcw, RotateCw, Moon, Sun, Grid3x3, LightbulbOff, Lightbulb, Square, Circle, Star, Trash, Wand2, Loader2, AlertCircle, Save, LogOut, LogIn, Image as ImageIcon } from "lucide-react";
+import { Cuboid, PaintBucket, Download, Settings, X, SlidersHorizontal, ImagePlus, Trash2, FlipHorizontal, FlipVertical, RotateCcw, RotateCw, Moon, Sun, Grid3x3, LightbulbOff, Lightbulb, Square, Circle, Star, Trash, Wand2, Loader2, AlertCircle, Save, LogOut, LogIn, Image as ImageIcon } from "lucide-react";
 import { useState } from "react";
 import NetSelector from "../NetSelector";
 import { useAuth } from "../../contexts/AuthContext";
 import { saveBoxConfig } from "../../services/db";
+import { useLang } from "../../contexts/LanguageContext";
 
-export default function Sidebar({ foldProgress, setFoldProgress, facesConfig, setFacesConfig, selectedFace, setSelectedFace, theme, setTheme, showGrid, setShowGrid, showShadows, setShowShadows, activeNetId, setActiveNetId, netFlipX, setNetFlipX, netFlipY, setNetFlipY, onExport, setShowAuthModal, setShowGalleryModal }) {
+export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, selectedFace, setSelectedFace, activeNetId, setActiveNetId, netFlipX, setNetFlipX, netFlipY, setNetFlipY, onExport, setShowAuthModal, setShowGalleryModal, setShowSettingsModal }) {
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -12,6 +13,30 @@ export default function Sidebar({ foldProgress, setFoldProgress, facesConfig, se
   const [isSaving, setIsSaving] = useState(false);
   
   const { currentUser, logout } = useAuth();
+  const { t } = useLang();
+
+  const handleRandomize = () => {
+    setFacesConfig(prev => {
+      const newConfig = { ...prev };
+      Object.keys(newConfig).forEach(key => {
+        newConfig[key] = {
+          ...newConfig[key],
+          color: '#' + Math.floor(Math.random() * 16777215).toString(16).padStart(6, '0')
+        };
+      });
+      return newConfig;
+    });
+  };
+
+  const handleSetAllWhite = () => {
+    setFacesConfig(prev => {
+      const newConfig = { ...prev };
+      Object.keys(newConfig).forEach(key => {
+        newConfig[key] = { ...newConfig[key], color: '#ffffff' };
+      });
+      return newConfig;
+    });
+  };
 
   const handleSaveBox = async () => {
     if (!currentUser) return setShowAuthModal(true);
@@ -139,69 +164,39 @@ export default function Sidebar({ foldProgress, setFoldProgress, facesConfig, se
 
   return (
     <aside className="w-80 bg-white dark:bg-slate-800 border-r border-slate-200 dark:border-slate-700 shadow-sm flex flex-col h-full z-10 transition-colors">
-      <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center">
+      <div className="p-6 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-white dark:bg-slate-800">
         <div className="flex items-center gap-3">
           <div className="bg-indigo-600 p-2 rounded-lg text-white">
             <Cuboid size={24} />
           </div>
-          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">Geometry App</h2>
+          <h2 className="text-xl font-bold text-slate-800 dark:text-slate-100">{t('appTitle')}</h2>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           <button 
-            onClick={() => setShowShadows(!showShadows)} 
-            className={`p-2 rounded-lg transition-colors ${showShadows ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-400 hover:dark:bg-slate-600'}`}
-            title="Toggle Shadows"
+            onClick={() => setShowSettingsModal(true)} 
+            className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg dark:text-slate-400 dark:hover:bg-slate-700 transition-colors"
+            title={t('settings')}
           >
-            {showShadows ? <Lightbulb size={18} /> : <LightbulbOff size={18} />}
+            <Settings size={20} />
           </button>
+          
+          {/* Mobile close button */}
           <button 
-            onClick={() => setShowGrid(!showGrid)} 
-            className={`p-2 rounded-lg transition-colors ${showGrid ? 'bg-indigo-100 text-indigo-600 dark:bg-indigo-900/50 dark:text-indigo-400' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-400 hover:dark:bg-slate-600'}`}
-            title="Toggle Grid"
+            onClick={closeSidebar} 
+            className="p-2 text-slate-500 hover:bg-slate-100 rounded-lg dark:text-slate-400 dark:hover:bg-slate-700 transition-colors md:hidden"
           >
-            <Grid3x3 size={18} />
-          </button>
-          <button 
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} 
-            className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600 transition-colors"
-            title="Toggle Theme"
-          >
-            {theme === 'dark' ? <Sun size={18} /> : <Moon size={18} />}
+            <X size={20} />
           </button>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide">
         
-        {/* Folding Control Section */}
-        <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
-            <SlidersHorizontal size={14} />
-            Folding Control
-          </h3>
-          <div className="px-1 py-2">
-            <input 
-              type="range" 
-              min="0" max="1" step="0.01" 
-              value={foldProgress}
-              onChange={(e) => setFoldProgress(parseFloat(e.target.value))}
-              className="w-full accent-indigo-600 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
-            />
-            <div className="flex justify-between text-xs text-slate-500 mt-2 font-medium">
-              <span>2D Net</span>
-              <span>3D Box</span>
-            </div>
-            <div className="mt-2 text-center text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 py-1 rounded-md">
-              {Math.round(foldProgress * 100)}% Folded
-            </div>
-          </div>
-        </div>
-
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
               <Cuboid size={14} />
-              Net Geometry
+              {t('netGeometry')}
             </h3>
             <div className="flex gap-1 border border-slate-200 dark:border-slate-700 rounded bg-slate-50 dark:bg-slate-800 p-0.5 shadow-sm">
               <button 
@@ -227,9 +222,26 @@ export default function Sidebar({ foldProgress, setFoldProgress, facesConfig, se
         </div>
 
         <div className="space-y-3">
-          <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-            Face Customization
-          </h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+              {t('face')} Customization
+            </h3>
+            <div className="flex gap-2">
+              <button 
+                onClick={handleSetAllWhite}
+                className="text-xs px-2 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded font-bold shadow-sm hover:scale-105 transition-transform"
+                title="Set All Clear"
+              >
+                ⚪
+              </button>
+              <button 
+                onClick={handleRandomize}
+                className="text-xs px-2 py-1 bg-gradient-to-r from-pink-500 to-orange-400 text-white rounded font-bold shadow hover:scale-105 transition-transform flex items-center gap-1"
+              >
+                🎲 {t('randomize')}
+              </button>
+            </div>
+          </div>
           
           <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl space-y-4 shadow-sm">
             
@@ -418,11 +430,11 @@ export default function Sidebar({ foldProgress, setFoldProgress, facesConfig, se
 
             {/* AI Generator */}
             <div className="space-y-2 pt-3 border-t border-slate-200 dark:border-slate-700">
-              <label className="text-xs font-medium text-slate-600 dark:text-slate-400">✨ AI Texture Generator</label>
+              <label className="text-xs font-medium text-slate-600 dark:text-slate-400">{t('aiGenerator')}</label>
               <textarea 
                 value={aiPrompt}
                 onChange={e => setAiPrompt(e.target.value)}
-                placeholder="Make a wooden box texture, 4k..."
+                placeholder={t('aiPlaceholder')}
                 className="w-full h-16 resize-none bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg p-2 text-xs text-slate-700 dark:text-slate-300 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 disabled={isGenerating}
               />
@@ -446,12 +458,12 @@ export default function Sidebar({ foldProgress, setFoldProgress, facesConfig, se
                 {isGenerating ? (
                   <>
                     <Loader2 size={16} className="animate-spin" />
-                    Generating...
+                    {t('aiLoading')}
                   </>
                 ) : (
                   <>
                     <Wand2 size={16} />
-                    Generate with AI
+                    {t('aiGenerateBtn')}
                   </>
                 )}
               </button>
@@ -463,56 +475,59 @@ export default function Sidebar({ foldProgress, setFoldProgress, facesConfig, se
 
       <div className="p-4 border-t border-slate-100 dark:border-slate-800 space-y-3 bg-white dark:bg-slate-800">
         
-        {/* User Auth Section */}
-        {currentUser ? (
-          <div className="flex items-center justify-between bg-slate-50 dark:bg-slate-900 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
-            <div className="flex items-center gap-2 truncate pr-2">
-              <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-[10px]">
-                {currentUser.email.charAt(0).toUpperCase()}
+        {/* Auth & Gallery Zone (Highlighted!) */}
+        <div className="bg-indigo-50/70 border border-indigo-100 dark:bg-slate-900/50 dark:border-slate-700 rounded-xl p-3 space-y-3">
+          {/* User Auth Section */}
+          {currentUser ? (
+            <div className="flex items-center justify-between bg-white dark:bg-slate-800 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700">
+              <div className="flex items-center gap-2 truncate pr-2">
+                <div className="w-6 h-6 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold text-[10px]">
+                  {currentUser.email.charAt(0).toUpperCase()}
+                </div>
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate">
+                  {currentUser.email}
+                </span>
               </div>
-              <span className="text-xs font-medium text-slate-600 dark:text-slate-300 truncate">
-                {currentUser.email}
-              </span>
+              <button 
+                onClick={logout} 
+                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
+                title="Logout"
+              >
+                <LogOut size={14} />
+              </button>
             </div>
+          ) : (
             <button 
-              onClick={logout} 
-              className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded transition-colors"
-              title="Logout"
+              onClick={() => setShowAuthModal(true)}
+              className="w-full flex items-center justify-center gap-2 py-2 border border-indigo-300 dark:border-indigo-800/80 bg-white dark:bg-slate-800 text-indigo-700 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors text-sm font-medium shadow-sm"
             >
-              <LogOut size={14} />
+              <LogIn size={16} />
+              {t('loginRegister')}
+            </button>
+          )}
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-2 gap-2">
+            <button 
+              onClick={handleSaveBox}
+              disabled={isSaving}
+              className="flex flex-col items-center justify-center gap-1 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-colors text-xs font-bold shadow-md shadow-indigo-600/20"
+            >
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+              {isSaving ? t('saving') : t('saveBox')}
+            </button>
+            
+            <button 
+              onClick={() => {
+                if (currentUser) setShowGalleryModal(true);
+                else setShowAuthModal(true);
+              }}
+              className="flex flex-col items-center justify-center gap-1 py-2 bg-white border border-slate-200 dark:bg-slate-800 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg transition-colors text-xs font-bold shadow-sm"
+            >
+              <ImageIcon size={18} />
+              {t('myGallery')}
             </button>
           </div>
-        ) : (
-          <button 
-            onClick={() => setShowAuthModal(true)}
-            className="w-full flex items-center justify-center gap-2 py-2 border border-indigo-200 dark:border-indigo-800/50 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/30 rounded-lg transition-colors text-sm font-medium"
-          >
-            <LogIn size={16} />
-            Sign In / Register
-          </button>
-        )}
-
-        {/* Action Buttons */}
-        <div className="grid grid-cols-2 gap-2">
-          <button 
-            onClick={handleSaveBox}
-            disabled={isSaving}
-            className="flex flex-col items-center justify-center gap-1 py-2 bg-indigo-50 hover:bg-indigo-100 dark:bg-indigo-900/20 dark:hover:bg-indigo-900/40 text-indigo-700 dark:text-indigo-400 rounded-lg transition-colors text-xs font-bold"
-          >
-            {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
-            {isSaving ? "Saving..." : "Save Box"}
-          </button>
-          
-          <button 
-            onClick={() => {
-              if (currentUser) setShowGalleryModal(true);
-              else setShowAuthModal(true);
-            }}
-            className="flex flex-col items-center justify-center gap-1 py-2 bg-purple-50 hover:bg-purple-100 dark:bg-purple-900/20 dark:hover:bg-purple-900/40 text-purple-700 dark:text-purple-400 rounded-lg transition-colors text-xs font-bold"
-          >
-            <ImageIcon size={18} />
-            My Gallery
-          </button>
         </div>
 
         <button 
@@ -520,7 +535,7 @@ export default function Sidebar({ foldProgress, setFoldProgress, facesConfig, se
           className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white rounded-lg transition-colors font-medium text-sm shadow-sm" 
         >
           <Download size={16} />
-          Export PNG Snapshot
+          {t('exportImage')}
         </button>
       </div>
     </aside>

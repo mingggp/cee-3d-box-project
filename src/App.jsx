@@ -5,10 +5,14 @@ import Box from "./components/canvas/Box";
 import Sidebar from "./components/layout/Sidebar";
 import ExportModal from "./components/ExportModal";
 import { AuthProvider } from './contexts/AuthContext';
+import { LanguageProvider, useLang } from './contexts/LanguageContext';
 import AuthModal from './components/auth/AuthModal';
 import GalleryModal from './components/gallery/GalleryModal';
+import SettingsModal from './components/SettingsModal';
 
 function AppContent() {
+  const { lang, setLang } = useLang();
+  
   const [foldProgress, setFoldProgress] = useState(0); // 0 to 1
   const [selectedFace, setSelectedFace] = useState("front");
   const [theme, setTheme] = useState("dark");
@@ -19,6 +23,10 @@ function AppContent() {
   const [netFlipY, setNetFlipY] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportImageBlob, setExportImageBlob] = useState(null);
+  
+  // Settings & Navigation States
+  const [sidebarPosition, setSidebarPosition] = useState("left"); // "left" | "right"
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   
   // Phase 8 States
   const [showAuthModal, setShowAuthModal] = useState(false);
@@ -50,22 +58,18 @@ function AppContent() {
         setFacesConfig={setFacesConfig}
         selectedFace={selectedFace}
         setSelectedFace={setSelectedFace}
-        theme={theme}
-        setTheme={setTheme}
-        showGrid={showGrid}
-        setShowGrid={setShowGrid}
-        showShadows={showShadows}
-        setShowShadows={setShowShadows}
+        sidebarPosition={sidebarPosition}
+        setShowSettingsModal={setShowSettingsModal}
+        setShowExportModal={setShowExportModal}
+        setExportImageBlob={setExportImageBlob}
+        setShowAuthModal={setShowAuthModal}
+        setShowGalleryModal={setShowGalleryModal}
         activeNetId={activeNetId}
         setActiveNetId={setActiveNetId}
         netFlipX={netFlipX}
         setNetFlipX={setNetFlipX}
         netFlipY={netFlipY}
         setNetFlipY={setNetFlipY}
-        setShowExportModal={setShowExportModal}
-        setExportImageBlob={setExportImageBlob}
-        setShowAuthModal={setShowAuthModal}
-        setShowGalleryModal={setShowGalleryModal}
       >
         <Scene 
           foldProgress={foldProgress} 
@@ -95,6 +99,15 @@ function AppContent() {
         )}
       </MainLayout>
 
+      <SettingsModal 
+        isOpen={showSettingsModal} 
+        onClose={() => setShowSettingsModal(false)}
+        theme={theme} setTheme={setTheme}
+        showGrid={showGrid} setShowGrid={setShowGrid}
+        showShadows={showShadows} setShowShadows={setShowShadows}
+        sidebarPosition={sidebarPosition} setSidebarPosition={setSidebarPosition}
+        lang={lang} setLang={setLang}
+      />
       <AuthModal isOpen={showAuthModal} onClose={() => setShowAuthModal(false)} />
       <GalleryModal isOpen={showGalleryModal} onClose={() => setShowGalleryModal(false)} onLoadBox={handleLoadBox} />
     </>
@@ -104,7 +117,9 @@ function AppContent() {
 function App() {
   return (
     <AuthProvider>
-      <AppContent />
+      <LanguageProvider>
+        <AppContent />
+      </LanguageProvider>
     </AuthProvider>
   );
 }

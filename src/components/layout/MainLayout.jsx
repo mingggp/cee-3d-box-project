@@ -1,28 +1,35 @@
+import React, { useState } from "react";
 import Sidebar from "./Sidebar";
-import { Focus } from "lucide-react";
+import { Focus, Menu, X, SlidersHorizontal } from "lucide-react";
 
-export default function MainLayout({ children, foldProgress, setFoldProgress, facesConfig, setFacesConfig, selectedFace, setSelectedFace, theme, setTheme, showGrid, setShowGrid, showShadows, setShowShadows, activeNetId, setActiveNetId, netFlipX, setNetFlipX, netFlipY, setNetFlipY, setShowExportModal, setExportImageBlob, setShowAuthModal, setShowGalleryModal }) {
+export default function MainLayout({ children, foldProgress, setFoldProgress, facesConfig, setFacesConfig, selectedFace, setSelectedFace, sidebarPosition, setShowSettingsModal, setShowExportModal, setExportImageBlob, setShowAuthModal, setShowGalleryModal, activeNetId, setActiveNetId, netFlipX, setNetFlipX, netFlipY, setNetFlipY }) {
+  
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   const handleResetCamera = () => {
     window.dispatchEvent(new CustomEvent('resetCamera'));
   };
 
   return (
-    <div className={`${theme} w-full h-full`}>
-      <div className="flex h-screen w-full overflow-hidden transition-colors bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 font-sans">
-        {/* Sidebar Section */}
+    <div className={`flex h-screen w-screen bg-slate-50 dark:bg-slate-900 overflow-hidden ${sidebarPosition === 'right' ? 'md:flex-row-reverse' : 'md:flex-row'}`}>
+      
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40 md:hidden transition-opacity"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
+      {/* Sidebar Tool Panel */}
+      <div 
+        className={`fixed inset-y-0 ${sidebarPosition === 'right' ? 'right-0' : 'left-0'} z-50 transform transition-transform duration-300 md:relative md:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : (sidebarPosition === 'right' ? 'translate-x-full' : '-translate-x-full')} shadow-2xl md:shadow-none h-full`}
+      >
         <Sidebar 
-          foldProgress={foldProgress} 
-          setFoldProgress={setFoldProgress} 
           facesConfig={facesConfig}
           setFacesConfig={setFacesConfig}
           selectedFace={selectedFace}
           setSelectedFace={setSelectedFace}
-          theme={theme}
-          setTheme={setTheme}
-          showGrid={showGrid}
-          setShowGrid={setShowGrid}
-          showShadows={showShadows}
-          setShowShadows={setShowShadows}
           activeNetId={activeNetId}
           setActiveNetId={setActiveNetId}
           netFlipX={netFlipX}
@@ -35,35 +42,61 @@ export default function MainLayout({ children, foldProgress, setFoldProgress, fa
           }}
           setShowAuthModal={setShowAuthModal}
           setShowGalleryModal={setShowGalleryModal}
+          setShowSettingsModal={setShowSettingsModal}
+          closeSidebar={() => setIsSidebarOpen(false)}
         />
+      </div>
       
       {/* Main 3D Canvas Section */}
-      <main className="flex-1 relative bg-slate-900">
+      <main className="flex-1 relative flex flex-col min-w-0 h-full w-full">
         {/* Children will be the 3D Canvas */}
         {children}
         
-        {/* Overlay for UI mapping later on if needed */}
-        <div className="absolute top-4 left-4 pointer-events-none">
-          <h1 className="text-white text-2xl font-bold tracking-tight drop-shadow-md">
-            3D Box Visualization
-          </h1>
-          <p className="text-slate-300 mt-1 drop-shadow-sm max-w-md">
-            Interactive 3D Geometry Viewer
-          </p>
-        </div>
+        {/* Top-aligned Floating Controls */}
+        <div className="absolute top-4 left-4 right-4 z-10 flex justify-between pointer-events-none">
+          {/* Mobile Menu Button */}
+          <button 
+            onClick={() => setIsSidebarOpen(true)}
+            className="md:hidden pointer-events-auto flex items-center justify-center p-2.5 bg-white/80 dark:bg-slate-800/80 hover:bg-white dark:hover:bg-slate-800 backdrop-blur-md rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 transition-colors"
+          >
+            <Menu size={20} />
+          </button>
+          
+          <div className="flex-1"></div> {/* Spacer */}
 
-        {/* Camera Reset UI */}
-        <div className="absolute top-4 right-4">
           <button 
             onClick={handleResetCamera}
-            className="flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white backdrop-blur-md px-3 py-2 rounded-lg border border-white/20 transition-all font-medium text-sm shadow-sm"
+            className="pointer-events-auto flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm px-3 py-2 rounded-lg border border-white/20 transition-all font-medium text-xs md:text-sm shadow-sm"
           >
             <Focus size={16} />
-            รีเซ็ตมุมกล้อง
+            <span className="hidden md:inline">รีเซ็ตมุมกล้อง</span>
           </button>
         </div>
+
+        {/* Floating Bottom Folding Control */}
+        <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-10 pointer-events-auto w-[90%] max-w-sm">
+          <div className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-xl border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-4 shadow-2xl flex flex-col items-center gap-3">
+            
+            <div className="flex justify-between w-full items-center px-1">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">2D Net</span>
+              <div className="flex items-center gap-1.5 px-3 py-1 bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 font-black text-sm rounded-full">
+                <SlidersHorizontal size={14} />
+                {Math.round(foldProgress * 100)}%
+              </div>
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">3D Box</span>
+            </div>
+
+            <input 
+              type="range" 
+              min="0" max="1" step="0.01" 
+              value={foldProgress}
+              onChange={(e) => setFoldProgress(parseFloat(e.target.value))}
+              className="w-full accent-indigo-600 h-3 bg-slate-200 dark:bg-slate-700 rounded-full appearance-none cursor-pointer"
+            />
+          </div>
+        </div>
+
       </main>
-    </div>
     </div>
   );
 }

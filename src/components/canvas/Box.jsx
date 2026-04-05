@@ -4,7 +4,7 @@ import { Edges } from "@react-three/drei";
 import { VALID_CUBE_NETS } from "./netsConfig";
 
 // FaceMaterial handles drawing base colors, textures, and vector shapes to a CanvasTexture.
-function FaceMaterial({ config, showShadows }) {
+function FaceMaterial({ config, showShadows, isHovered }) {
   const { color, textureUrl, shapes } = config;
   const canvasRef = useRef(null);
   
@@ -86,14 +86,15 @@ function FaceMaterial({ config, showShadows }) {
   }, [color, imgObj, shapes, config.rotation, config.flipX, config.flipY, texture]);
 
   const Material = showShadows ? "meshStandardMaterial" : "meshBasicMaterial";
+  const hoverProps = showShadows ? { emissive: isHovered ? "#444444" : "#000000" } : { color: isHovered ? "#dddddd" : "#ffffff" };
 
-  // Force pure white when Unlit so Texture is 100% bright
   return (
     <Material 
       color="#ffffff" 
       map={texture} 
       side={THREE.DoubleSide} 
       roughness={0.3} 
+      {...hoverProps}
     />
   );
 }
@@ -144,7 +145,7 @@ function FaceNode({ node, angle, facesConfig, getBinds, showShadows, selectedFac
       {/* 2. Position the PlaneMesh radiating securely from the Hinge */}
       <mesh position={map.meshPos} receiveShadow={showShadows} castShadow={showShadows} {...getBinds(node.id)}>
         <planeGeometry args={[2, 2]} />
-        <FaceMaterial config={facesConfig[node.id]} showShadows={showShadows} />
+        <FaceMaterial config={facesConfig[node.id]} showShadows={showShadows} isHovered={isHovered} />
         {drawEdges}
       </mesh>
       

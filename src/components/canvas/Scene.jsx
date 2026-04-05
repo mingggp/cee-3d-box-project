@@ -33,14 +33,15 @@ export default function Scene({ children, theme, showGrid, showShadows }) {
         {children}
 
         {/* Floor and Grid */}
-        {showGrid && <gridHelper args={[20, 20]} position={[0, -0.5, 0]} />}
         {showGrid && (
           <Grid 
             infiniteGrid 
             fadeDistance={30} 
+            sectionThickness={1}
+            cellThickness={0.5}
             sectionColor={theme === 'dark' ? "#334155" : "#cbd5e1"} 
             cellColor={theme === 'dark' ? "#1e293b" : "#e2e8f0"} 
-            position={[0, 0, 0]}
+            position={[0, -0.02, 0]}
           />
         )}
         
