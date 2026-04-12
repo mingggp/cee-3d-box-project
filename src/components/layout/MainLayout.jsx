@@ -11,7 +11,7 @@ export default function MainLayout({ children, foldProgress, setFoldProgress, fa
   };
 
   return (
-    <div className={`flex h-screen w-screen bg-slate-50 dark:bg-slate-900 overflow-hidden ${sidebarPosition === 'right' ? 'md:flex-row-reverse' : 'md:flex-row'}`}>
+    <div className={`flex h-[100dvh] w-screen bg-slate-50 dark:bg-slate-900 overflow-hidden ${sidebarPosition === 'right' ? 'md:flex-row-reverse' : 'md:flex-row'}`}>
 
       {/* Mobile Sidebar Overlay */}
       {isSidebarOpen && (

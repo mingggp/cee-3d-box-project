@@ -29,6 +29,7 @@ export default function CustomCameraControls({
 
   const state = useRef({
     dir: new THREE.Vector3(),
+    up: new THREE.Vector3(0, 1, 0),
     distance: 10,
   });
 
@@ -38,6 +39,7 @@ export default function CustomCameraControls({
     s.dir.copy(camera.position).sub(targetV.current);
     s.distance = s.dir.length();
     s.dir.normalize();
+    s.up.copy(camera.up).normalize();
   }, []); // eslint-disable-line
 
   useEffect(() => {
@@ -68,17 +70,21 @@ export default function CustomCameraControls({
       const worldAxis = axis.clone().applyQuaternion(camera.quaternion);
       const q = new THREE.Quaternion().setFromAxisAngle(worldAxis, -angle);
       s.dir.applyQuaternion(q).normalize();
+      s.up.applyQuaternion(q).normalize();
     };
 
     // ─── Orbit (no roll) ─────────────────────────────────────────────────────
     const applyOrbit = (dx, dy, speed) => {
       const spd = speed ?? orbitSpeed;
-      const yaw = new THREE.Quaternion().setFromAxisAngle(
-        new THREE.Vector3(0, 1, 0), -dx * spd,
-      );
+      // Orbit axes relative to camera's current orientation ensures stable controls even when rolled
+      const up = new THREE.Vector3(0, 1, 0).applyQuaternion(camera.quaternion);
       const right = new THREE.Vector3(1, 0, 0).applyQuaternion(camera.quaternion);
+      
+      const yaw = new THREE.Quaternion().setFromAxisAngle(up, -dx * spd);
       const pitch = new THREE.Quaternion().setFromAxisAngle(right, -dy * spd);
+      
       s.dir.applyQuaternion(pitch).applyQuaternion(yaw).normalize();
+      s.up.applyQuaternion(pitch).applyQuaternion(yaw).normalize();
     };
 
     // ─── Touch state ─────────────────────────────────────────────────────────
@@ -131,10 +137,10 @@ export default function CustomCameraControls({
         if (dAngle < -Math.PI) dAngle += 2 * Math.PI;
 
         if (Math.abs(dAngle) > 0.001) {
-          // Camera forward in world space = -Z rotated by camera quaternion
-          const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(camera.quaternion);
-          const rollQ = new THREE.Quaternion().setFromAxisAngle(forward, -dAngle * rollSensitivity);
-          s.dir.applyQuaternion(rollQ).normalize();
+          // Roll twists the camera around its viewing axis (s.dir)
+          // Rotate s.up around s.dir
+          const rollQ = new THREE.Quaternion().setFromAxisAngle(s.dir, -dAngle * rollSensitivity);
+          s.up.applyQuaternion(rollQ).normalize();
         }
 
         // 3) Midpoint movement → orbit
@@ -181,6 +187,7 @@ export default function CustomCameraControls({
       const initial = new THREE.Vector3(8, 6, 9).sub(targetV.current);
       s.distance = initial.length();
       s.dir.copy(initial).normalize();
+      s.up.set(0, 1, 0);
     };
 
     // ─── Register ────────────────────────────────────────────────────────────
@@ -209,9 +216,11 @@ export default function CustomCameraControls({
     const s = state.current;
     if (s.dir.length() < 0.5) s.dir.set(0, 0, 1);
     s.dir.normalize();
+    s.up.normalize();
     camera.position
       .copy(targetV.current)
       .addScaledVector(s.dir, s.distance);
+    camera.up.copy(s.up);
     camera.lookAt(targetV.current);
   });
 
