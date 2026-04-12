@@ -1,9 +1,10 @@
 import { useRef, useEffect } from "react";
 import { Canvas, useThree } from "@react-three/fiber";
-import { TrackballControls, Environment, Grid } from "@react-three/drei";
+import { Environment, Grid } from "@react-three/drei";
 import * as THREE from 'three';
 import { analyzeNetImage } from "../../utils/SmartNetAnalyzer";
 import { useToast } from "../../contexts/ToastContext";
+import CustomCameraControls from "./CustomCameraControls";
 import Box from "./Box";
 
 function CanvasDropHandler({ setFacesConfig, setActiveNetId, setNetFlipX, setNetFlipY }) {
@@ -96,18 +97,6 @@ function CanvasDropHandler({ setFacesConfig, setActiveNetId, setNetFlipX, setNet
 }
 
 export default function Scene({ children, theme, showGrid, showShadows, isAutoRotate, setFacesConfig, setActiveNetId, setNetFlipX, setNetFlipY }) {
-  const controlsRef = useRef();
-
-  useEffect(() => {
-    const handleReset = () => {
-      if (controlsRef.current) {
-        // TrackballControls: reset to initial state
-        controlsRef.current.reset();
-      }
-    };
-    window.addEventListener('resetCamera', handleReset);
-    return () => window.removeEventListener('resetCamera', handleReset);
-  }, []);
   return (
     <div className="w-full h-full">
       <Canvas camera={{ position: [8, 6, 9], fov: 45 }} shadows={showShadows} gl={{ preserveDrawingBuffer: true }}>
@@ -156,19 +145,13 @@ export default function Scene({ children, theme, showGrid, showShadows, isAutoRo
           </mesh>
         )}
 
-        {/* Controls — TrackballControls allows full 3D rotation (roll included) */}
-        <TrackballControls
-          ref={controlsRef}
-          makeDefault
-          rotateSpeed={1.5}
-          zoomSpeed={1.2}
-          noZoom={false}
-          noPan={true}
-          staticMoving={false}
-          dynamicDampingFactor={0.2}
+        {/* Controls — custom: 1-finger orbit, 2-finger trackball+zoom */}
+        <CustomCameraControls
+          target={[0, 2, 0]}
           minDistance={3}
           maxDistance={15}
-          target={[0, 2, 0]}
+          orbitSpeed={0.006}
+          trackballSpeed={2.0}
         />
       </Canvas>
     </div>
