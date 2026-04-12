@@ -32,14 +32,14 @@ function CanvasDropHandler({ setFacesConfig, setActiveNetId, setNetFlipX, setNet
       const rect = e.target.getBoundingClientRect();
       const clientX = e.clientX - rect.left;
       const clientY = e.clientY - rect.top;
-      
+
       const mouse = new THREE.Vector2();
       mouse.x = (clientX / rect.width) * 2 - 1;
       mouse.y = -(clientY / rect.height) * 2 + 1;
 
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(scene.children, true);
-      
+
       const faceHit = intersects.find(hit => hit.object.userData && hit.object.userData.faceId);
 
       if (faceHit) {
@@ -59,7 +59,7 @@ function CanvasDropHandler({ setFacesConfig, setActiveNetId, setNetFlipX, setNet
           setActiveNetId(result.activeNetId);
           setNetFlipX(result.netFlipX);
           setNetFlipY(result.netFlipY);
-          
+
           setFacesConfig(prev => {
             const next = { ...prev };
             for (const face of ['top', 'bottom', 'left', 'right', 'front', 'back']) {
@@ -69,7 +69,7 @@ function CanvasDropHandler({ setFacesConfig, setActiveNetId, setNetFlipX, setNet
             }
             return next;
           });
-          
+
           toast('✨ วิเคราะห์รูปคลี่สำเร็จ! กล่อง 3D พร้อมแล้ว', 'success');
 
         } catch (err) {
@@ -110,27 +110,27 @@ export default function Scene({ children, theme, showGrid, showShadows, isAutoRo
   }, []);
   return (
     <div className="w-full h-full">
-      <Canvas camera={{ position: [3, 8, 5], fov: 45 }} shadows={showShadows} gl={{ preserveDrawingBuffer: true }}>
+      <Canvas camera={{ position: [8, 6, 9], fov: 45 }} shadows={showShadows} gl={{ preserveDrawingBuffer: true }}>
         {/* Environment and Lighting */}
-        <color attach="background" args={[theme === 'dark' ? '#0f172a' : '#f8fafc']} /> 
+        <color attach="background" args={[theme === 'dark' ? '#0f172a' : '#f8fafc']} />
         <ambientLight intensity={showShadows ? 0.5 : 1} />
         {showShadows && (
-          <directionalLight 
-            position={[10, 10, 5]} 
-            intensity={1.5} 
-            castShadow 
+          <directionalLight
+            position={[10, 10, 5]}
+            intensity={1.5}
+            castShadow
             shadow-mapSize={1024}
           />
         )}
         <Environment preset="city" />
 
         {setFacesConfig && (
-           <CanvasDropHandler 
-             setFacesConfig={setFacesConfig} 
-             setActiveNetId={setActiveNetId} 
-             setNetFlipX={setNetFlipX} 
-             setNetFlipY={setNetFlipY} 
-           />
+          <CanvasDropHandler
+            setFacesConfig={setFacesConfig}
+            setActiveNetId={setActiveNetId}
+            setNetFlipX={setNetFlipX}
+            setNetFlipY={setNetFlipY}
+          />
         )}
 
         {/* Scene Objects */}
@@ -138,17 +138,17 @@ export default function Scene({ children, theme, showGrid, showShadows, isAutoRo
 
         {/* Floor and Grid */}
         {showGrid && (
-          <Grid 
-            infiniteGrid 
-            fadeDistance={30} 
+          <Grid
+            infiniteGrid
+            fadeDistance={30}
             sectionThickness={1}
             cellThickness={0.5}
-            sectionColor={theme === 'dark' ? "#334155" : "#cbd5e1"} 
-            cellColor={theme === 'dark' ? "#1e293b" : "#e2e8f0"} 
+            sectionColor={theme === 'dark' ? "#334155" : "#cbd5e1"}
+            cellColor={theme === 'dark' ? "#1e293b" : "#e2e8f0"}
             position={[0, -0.02, 0]}
           />
         )}
-        
+
         {showShadows && (
           <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, 0]} receiveShadow>
             <planeGeometry args={[100, 100]} />
@@ -160,11 +160,10 @@ export default function Scene({ children, theme, showGrid, showShadows, isAutoRo
         <TrackballControls
           ref={controlsRef}
           makeDefault
-          rotateSpeed={3.0}
+          rotateSpeed={1.5}
           zoomSpeed={1.2}
-          panSpeed={0.8}
           noZoom={false}
-          noPan={false}
+          noPan={true}
           staticMoving={false}
           dynamicDampingFactor={0.2}
           minDistance={3}
