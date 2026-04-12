@@ -16,6 +16,8 @@ html, body, #root {
   height: 100%;
   margin: 0;
   padding: 0;
+  overflow: hidden;          /* prevent page scroll on iPad/mobile */
+  touch-action: none;        /* hand all touch events to JS, no browser scroll */
   background-color: #f3f4f6; /* bg-gray-100 */
 }
 
