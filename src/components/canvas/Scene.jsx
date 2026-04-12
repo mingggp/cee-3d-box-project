@@ -147,9 +147,9 @@ export default function Scene({ children, theme, showGrid, showShadows, isAutoRo
 
         {/* Controls — custom: 1-finger orbit, 2-finger trackball+zoom */}
         <CustomCameraControls
-          target={[0, 2, 0]}
+          target={[0, 1, 0]}
           minDistance={3}
-          maxDistance={15}
+          maxDistance={20}
           orbitSpeed={0.006}
           trackballSpeed={2.0}
         />

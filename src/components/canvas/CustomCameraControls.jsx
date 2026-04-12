@@ -138,8 +138,8 @@ export default function CustomCameraControls({
 
         if (Math.abs(dAngle) > 0.001) {
           // Roll twists the camera around its viewing axis (s.dir)
-          // Rotate s.up around s.dir
-          const rollQ = new THREE.Quaternion().setFromAxisAngle(s.dir, -dAngle * rollSensitivity);
+          // Rotate s.up around s.dir (inverted the sign to match natural rotation)
+          const rollQ = new THREE.Quaternion().setFromAxisAngle(s.dir, dAngle * rollSensitivity);
           s.up.applyQuaternion(rollQ).normalize();
         }
 
