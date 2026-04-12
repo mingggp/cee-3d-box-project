@@ -1,21 +1,116 @@
 import { useRef, useEffect } from "react";
-import { Canvas } from "@react-three/fiber";
-import { OrbitControls, Environment, Grid } from "@react-three/drei";
+import { Canvas, useThree } from "@react-three/fiber";
+import { TrackballControls, Environment, Grid } from "@react-three/drei";
+import * as THREE from 'three';
+import { analyzeNetImage } from "../../utils/SmartNetAnalyzer";
+import { useToast } from "../../contexts/ToastContext";
 import Box from "./Box";
 
-export default function Scene({ children, theme, showGrid, showShadows }) {
+function CanvasDropHandler({ setFacesConfig, setActiveNetId, setNetFlipX, setNetFlipY }) {
+  const { camera, scene, raycaster } = useThree();
+  const toast = useToast();
+
+  useEffect(() => {
+    const handleDragOver = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      e.dataTransfer.dropEffect = 'copy';
+    };
+
+    const handleDrop = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+
+      if (!e.dataTransfer.files || e.dataTransfer.files.length === 0) return;
+      const file = e.dataTransfer.files[0];
+      if (!file.type.startsWith('image/')) {
+        toast('กรุณาลากไฟล์รูปภาพเท่านั้น', 'error');
+        return;
+      }
+
+      // Check if dropped on a face
+      const rect = e.target.getBoundingClientRect();
+      const clientX = e.clientX - rect.left;
+      const clientY = e.clientY - rect.top;
+      
+      const mouse = new THREE.Vector2();
+      mouse.x = (clientX / rect.width) * 2 - 1;
+      mouse.y = -(clientY / rect.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(scene.children, true);
+      
+      const faceHit = intersects.find(hit => hit.object.userData && hit.object.userData.faceId);
+
+      if (faceHit) {
+        // Option 1: Dropped exactly on a face -> update that face's texture only
+        const faceId = faceHit.object.userData.faceId;
+        const imageUrl = URL.createObjectURL(file);
+        setFacesConfig(prev => ({
+          ...prev,
+          [faceId]: { ...prev[faceId], textureUrl: imageUrl }
+        }));
+      } else {
+        // Option 2: Dropped on background -> Try Smart Net Analysis
+        try {
+          // You could show a quick loading toast here
+          const result = await analyzeNetImage(file);
+          // Apply results
+          setActiveNetId(result.activeNetId);
+          setNetFlipX(result.netFlipX);
+          setNetFlipY(result.netFlipY);
+          
+          setFacesConfig(prev => {
+            const next = { ...prev };
+            for (const face of ['top', 'bottom', 'left', 'right', 'front', 'back']) {
+              if (result.extractedFaces[face]) {
+                next[face] = { ...next[face], textureUrl: result.extractedFaces[face] };
+              }
+            }
+            return next;
+          });
+          
+          toast('✨ วิเคราะห์รูปคลี่สำเร็จ! กล่อง 3D พร้อมแล้ว', 'success');
+
+        } catch (err) {
+          toast('Smart Scan ไม่สามารถแกะแบบได้ — ลากรูปลงบนหน้ากล่องโดยตรงแทนได้เลย', 'error');
+        }
+      }
+    };
+
+    const canvasDOM = window.document.querySelector('canvas');
+    if (canvasDOM) {
+      canvasDOM.addEventListener('dragover', handleDragOver);
+      canvasDOM.addEventListener('drop', handleDrop);
+    }
+
+    return () => {
+      if (canvasDOM) {
+        canvasDOM.removeEventListener('dragover', handleDragOver);
+        canvasDOM.removeEventListener('drop', handleDrop);
+      }
+    };
+  }, [camera, scene, raycaster, setFacesConfig, setActiveNetId, setNetFlipX, setNetFlipY]);
+
+  return null;
+}
+
+export default function Scene({ children, theme, showGrid, showShadows, isAutoRotate, setFacesConfig, setActiveNetId, setNetFlipX, setNetFlipY }) {
   const controlsRef = useRef();
 
   useEffect(() => {
     const handleReset = () => {
-      controlsRef.current?.reset();
+      if (controlsRef.current) {
+        // TrackballControls: reset to initial state
+        controlsRef.current.reset();
+      }
     };
     window.addEventListener('resetCamera', handleReset);
     return () => window.removeEventListener('resetCamera', handleReset);
   }, []);
   return (
     <div className="w-full h-full">
-      <Canvas camera={{ position: [5, 4, 5], fov: 45 }} shadows={showShadows} gl={{ preserveDrawingBuffer: true }}>
+      <Canvas camera={{ position: [3, 8, 5], fov: 45 }} shadows={showShadows} gl={{ preserveDrawingBuffer: true }}>
         {/* Environment and Lighting */}
         <color attach="background" args={[theme === 'dark' ? '#0f172a' : '#f8fafc']} /> 
         <ambientLight intensity={showShadows ? 0.5 : 1} />
@@ -28,6 +123,15 @@ export default function Scene({ children, theme, showGrid, showShadows }) {
           />
         )}
         <Environment preset="city" />
+
+        {setFacesConfig && (
+           <CanvasDropHandler 
+             setFacesConfig={setFacesConfig} 
+             setActiveNetId={setActiveNetId} 
+             setNetFlipX={setNetFlipX} 
+             setNetFlipY={setNetFlipY} 
+           />
+        )}
 
         {/* Scene Objects */}
         {children}
@@ -52,15 +156,20 @@ export default function Scene({ children, theme, showGrid, showShadows }) {
           </mesh>
         )}
 
-        {/* Controls */}
-        <OrbitControls 
+        {/* Controls — TrackballControls allows full 3D rotation (roll included) */}
+        <TrackballControls
           ref={controlsRef}
-          makeDefault 
-          enableDamping={true}
-          minPolarAngle={0} 
-          maxPolarAngle={Math.PI} /* Allows viewing under the ground */
+          makeDefault
+          rotateSpeed={3.0}
+          zoomSpeed={1.2}
+          panSpeed={0.8}
+          noZoom={false}
+          noPan={false}
+          staticMoving={false}
+          dynamicDampingFactor={0.2}
           minDistance={3}
           maxDistance={15}
+          target={[0, 2, 0]}
         />
       </Canvas>
     </div>

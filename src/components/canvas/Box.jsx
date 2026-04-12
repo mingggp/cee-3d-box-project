@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react";
 import * as THREE from "three";
-import { Edges } from "@react-three/drei";
+import { Edges, Text } from "@react-three/drei";
 import { VALID_CUBE_NETS } from "./netsConfig";
 
 // FaceMaterial handles drawing base colors, textures, and vector shapes to a CanvasTexture.
-function FaceMaterial({ config, showShadows, isHovered }) {
+function FaceMaterial({ config, showShadows, isHovered, isSelected }) {
   const { color, textureUrl, shapes } = config;
   const canvasRef = useRef(null);
   
@@ -72,6 +72,12 @@ function FaceMaterial({ config, showShadows, isHovered }) {
       });
     }
 
+    if (isSelected) {
+      ctx.lineWidth = 40; // Super thick visible border
+      ctx.strokeStyle = '#ec4899'; // Vivid Pink (Pink 500)
+      ctx.strokeRect(20, 20, 984, 984); // Inset slightly so thick lines stay inside UV
+    }
+
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.center.set(0.5, 0.5);
     texture.rotation = -config.rotation * (Math.PI / 180);
@@ -83,10 +89,16 @@ function FaceMaterial({ config, showShadows, isHovered }) {
     texture.repeat.set(repeatX, repeatY);
     
     texture.needsUpdate = true;
-  }, [color, imgObj, shapes, config.rotation, config.flipX, config.flipY, texture]);
+  }, [color, imgObj, shapes, config.rotation, config.flipX, config.flipY, texture, isSelected]);
 
   const Material = showShadows ? "meshStandardMaterial" : "meshBasicMaterial";
-  const hoverProps = showShadows ? { emissive: isHovered ? "#444444" : "#000000" } : { color: isHovered ? "#dddddd" : "#ffffff" };
+  
+  // Use a noticeable emissive color for selected (e.g. Vivid Pink glow), and subtle for hovered
+  const emissiveColor = isSelected ? "#831843" : isHovered ? "#333333" : "#000000";
+  // For unlit mode (BasicMaterial), we change the base color tint directly
+  const basicColor = isSelected ? "#fbcfe8" : isHovered ? "#e2e8f0" : "#ffffff";
+  
+  const hoverProps = showShadows ? { emissive: emissiveColor } : { color: basicColor };
 
   return (
     <Material 
@@ -100,7 +112,7 @@ function FaceMaterial({ config, showShadows, isHovered }) {
 }
 
 // Recursive algorithm for processing arbitrary folding nets!
-function FaceNode({ node, angle, facesConfig, getBinds, showShadows, selectedFace, hoveredFace, netFlipX, netFlipY }) {
+function FaceNode({ node, angle, facesConfig, getBinds, showShadows, showLabels, selectedFace, hoveredFace, netFlipX, netFlipY }) {
   // Determine folding mappings strictly relative to parent's MESH CENTER
   const getMappings = (edge) => {
     let logicalEdge = edge;
@@ -115,10 +127,10 @@ function FaceNode({ node, angle, facesConfig, getBinds, showShadows, selectedFac
     }
 
     switch (logicalEdge) {
-      case 'bottom': return { hingePos: [0, -1, 0], meshPos: [0, -1, 0], rot: [angle, 0, 0] };
-      case 'top':    return { hingePos: [0, 1, 0],  meshPos: [0, 1, 0],  rot: [-angle, 0, 0] };
-      case 'left':   return { hingePos: [-1, 0, 0], meshPos: [-1, 0, 0], rot: [0, -angle, 0] };
-      case 'right':  return { hingePos: [1, 0, 0],  meshPos: [1, 0, 0],  rot: [0, angle, 0] };
+      case 'bottom': return { hingePos: [0, -1, 0], meshPos: [0, -1, 0], rot: [-angle, 0, 0] };
+      case 'top':    return { hingePos: [0, 1, 0],  meshPos: [0, 1, 0],  rot: [angle, 0, 0] };
+      case 'left':   return { hingePos: [-1, 0, 0], meshPos: [-1, 0, 0], rot: [0, angle, 0] };
+      case 'right':  return { hingePos: [1, 0, 0],  meshPos: [1, 0, 0],  rot: [0, -angle, 0] };
       default:       return { hingePos: [0, 0, 0],  meshPos: [0, 0, 0],  rot: [0, 0, 0] }; // Root handles itself
     }
   };
@@ -128,11 +140,11 @@ function FaceNode({ node, angle, facesConfig, getBinds, showShadows, selectedFac
   const isSelected = selectedFace === node.id;
   const isHovered = hoveredFace === node.id;
 
-  // Visual selection borders
+  // Visual selection borders (keep as an extra inner/outer glow)
   const drawEdges = (isSelected || isHovered) && (
     <Edges 
-      scale={1.01} 
-      color={isSelected ? "#4f46e5" : "#a5b4fc"} 
+      scale={isSelected ? 1.02 : 1.01} 
+      color={isSelected ? "#ec4899" : "#a5b4fc"} 
       threshold={15} 
       visible={true}
     />
@@ -143,10 +155,25 @@ function FaceNode({ node, angle, facesConfig, getBinds, showShadows, selectedFac
     <group position={map.hingePos} rotation={map.rot}>
       
       {/* 2. Position the PlaneMesh radiating securely from the Hinge */}
-      <mesh position={map.meshPos} receiveShadow={showShadows} castShadow={showShadows} {...getBinds(node.id)}>
+      <mesh position={map.meshPos} receiveShadow={showShadows} castShadow={showShadows} userData={{ faceId: node.id }} {...getBinds(node.id)}>
         <planeGeometry args={[2, 2]} />
-        <FaceMaterial config={facesConfig[node.id]} showShadows={showShadows} isHovered={isHovered} />
+        <FaceMaterial config={facesConfig[node.id]} showShadows={showShadows} isHovered={isHovered} isSelected={isSelected} />
         {drawEdges}
+        
+        {/* Render Label floating slightly above face if enabled */}
+        {showLabels && (
+          <Text 
+            position={[0, 0, 0.05]} 
+            fontSize={0.4} 
+            color={themeColor => showShadows ? "#000" : "#000"} 
+            outlineWidth={0.02} 
+            outlineColor="#ffffff"
+            anchorX="center" 
+            anchorY="middle"
+          >
+            {node.id.toUpperCase()}
+          </Text>
+        )}
       </mesh>
       
       {/* 3. Recursively stack children!
@@ -162,6 +189,7 @@ function FaceNode({ node, angle, facesConfig, getBinds, showShadows, selectedFac
                facesConfig={facesConfig} 
                getBinds={getBinds} 
                showShadows={showShadows}
+               showLabels={showLabels}
                selectedFace={selectedFace}
                hoveredFace={hoveredFace}
                netFlipX={netFlipX}
@@ -174,7 +202,7 @@ function FaceNode({ node, angle, facesConfig, getBinds, showShadows, selectedFac
   );
 }
 
-export default function Box({ foldProgress = 1, facesConfig, selectedFace, setSelectedFace, showShadows, activeNetId = 0, netFlipX = false, netFlipY = false }) {
+export default function Box({ foldProgress = 1, facesConfig, selectedFace, setSelectedFace, showShadows, showLabels, activeNetId = 0, netFlipX = false, netFlipY = false }) {
   const [hoveredFace, setHoveredFace] = useState(null);
 
   const getBinds = (faceId) => ({
@@ -203,7 +231,7 @@ export default function Box({ foldProgress = 1, facesConfig, selectedFace, setSe
   return (
     <group 
       position={[0, liftHeight, 0]} 
-      rotation={[-Math.PI / 2, 0, 0]}
+      rotation={[Math.PI / 2, 0, 0]}
     >
        <FaceNode 
          node={activeNetLayout} 
@@ -211,6 +239,7 @@ export default function Box({ foldProgress = 1, facesConfig, selectedFace, setSe
          facesConfig={facesConfig}
          getBinds={getBinds}
          showShadows={showShadows}
+         showLabels={showLabels}
          selectedFace={selectedFace}
          hoveredFace={hoveredFace}
          netFlipX={netFlipX}

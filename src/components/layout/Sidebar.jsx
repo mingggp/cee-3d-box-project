@@ -1,19 +1,55 @@
 import { Cuboid, PaintBucket, Download, Settings, X, SlidersHorizontal, ImagePlus, Trash2, FlipHorizontal, FlipVertical, RotateCcw, RotateCw, Moon, Sun, Grid3x3, LightbulbOff, Lightbulb, Square, Circle, Star, Trash, Wand2, Loader2, AlertCircle, Save, LogOut, LogIn, Image as ImageIcon } from "lucide-react";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import NetSelector from "../NetSelector";
 import { useAuth } from "../../contexts/AuthContext";
 import { saveBoxConfig } from "../../services/db";
 import { useLang } from "../../contexts/LanguageContext";
+import { analyzeNetImage } from "../../utils/SmartNetAnalyzer";
+import { useToast } from "../../contexts/ToastContext";
 
-export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, selectedFace, setSelectedFace, activeNetId, setActiveNetId, netFlipX, setNetFlipX, netFlipY, setNetFlipY, onExport, setShowAuthModal, setShowGalleryModal, setShowSettingsModal }) {
+export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, undoFaces, redoFaces, canUndo, canRedo, selectedFace, setSelectedFace, activeNetId, setActiveNetId, netFlipX, setNetFlipX, netFlipY, setNetFlipY, onExport, setShowAuthModal, setShowGalleryModal, setShowSettingsModal }) {
 
   const [aiPrompt, setAiPrompt] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [aiError, setAiError] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [clipboardFaceConfig, setClipboardFaceConfig] = useState(null);
   
   const { currentUser, logout } = useAuth();
   const { t } = useLang();
+  const toast = useToast();
+  
+  const smartScanInputRef = useRef(null);
+
+  const handleSmartScan = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    try {
+      const result = await analyzeNetImage(file);
+      console.log('[SmartScan] Result:', result);
+      console.log('[SmartScan] Net index:', result.activeNetId, '| flipX:', result.netFlipX, '| flipY:', result.netFlipY, '| swapXY:', result.swapXY);
+      console.log('[SmartScan] Faces extracted:', Object.keys(result.extractedFaces));
+      setActiveNetId(result.activeNetId);
+      setNetFlipX(result.netFlipX);
+      setNetFlipY(result.netFlipY);
+      
+      setFacesConfig(prev => {
+        const next = { ...prev };
+        for (const face of ['top', 'bottom', 'left', 'right', 'front', 'back']) {
+          if (result.extractedFaces[face]) {
+            next[face] = { ...next[face], textureUrl: result.extractedFaces[face] };
+          }
+        }
+        return next;
+      });
+      toast('✨ แสกนสำเร็จ! แปลงรูปคลี่ลง 3D Box เรียบร้อยแล้ว', 'success');
+    } catch (err) {
+      toast(err.message, 'error');
+    }
+    // reset input
+    e.target.value = '';
+  };
 
   const handleRandomize = () => {
     setFacesConfig(prev => {
@@ -32,7 +68,15 @@ export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, sel
     setFacesConfig(prev => {
       const newConfig = { ...prev };
       Object.keys(newConfig).forEach(key => {
-        newConfig[key] = { ...newConfig[key], color: '#ffffff' };
+        newConfig[key] = { 
+          ...newConfig[key], 
+          color: '#ffffff',
+          textureUrl: null,
+          userImageUrl: null,
+          aiImageUrl: null,
+          shapes: [],
+          activeShapeIndex: null
+        };
       });
       return newConfig;
     });
@@ -43,10 +87,10 @@ export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, sel
     try {
       setIsSaving(true);
       await saveBoxConfig(currentUser.uid, { facesConfig, activeNetId, netFlipX, netFlipY });
-      alert("Box saved to gallery successfully! 🎉");
+      toast('บันทึกลง Gallery สำเร็จแล้ว! 🎉', 'success');
     } catch (err) {
       console.error(err);
-      alert("Failed to save box format.");
+      toast('บันทึกไม่สำเร็จ กรุณาลองใหม่', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -60,34 +104,53 @@ export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, sel
   };
 
   const handleAddShape = (type) => {
-    const currentShapes = facesConfig[selectedFace].shapes || [];
-    const newShape = {
-      id: Date.now(),
-      type,
-      x: 512,
-      y: 512,
-      scale: 1,
-      rotation: 0,
-      color: facesConfig[selectedFace].color === '#ffffff' ? '#4f46e5' : '#ffffff'
-    };
-    updateFaceConfig('shapes', [...currentShapes, newShape]);
-    updateFaceConfig('activeShapeIndex', currentShapes.length);
+    setFacesConfig(prev => {
+      const currentShapes = prev[selectedFace].shapes || [];
+      const newShape = {
+        id: Date.now(),
+        type,
+        x: 512,
+        y: 512,
+        scale: 1,
+        rotation: 0,
+        color: prev[selectedFace].color === '#ffffff' ? '#4f46e5' : '#ffffff'
+      };
+      return {
+        ...prev,
+        [selectedFace]: { 
+          ...prev[selectedFace], 
+          shapes: [...currentShapes, newShape],
+          activeShapeIndex: currentShapes.length
+        }
+      };
+    });
   };
   
   const handleUpdateShape = (updates) => {
-    const idx = facesConfig[selectedFace].activeShapeIndex;
-    if (idx === null || idx === undefined) return;
-    const currentShapes = [...facesConfig[selectedFace].shapes];
-    currentShapes[idx] = { ...currentShapes[idx], ...updates };
-    updateFaceConfig('shapes', currentShapes);
+    setFacesConfig(prev => {
+      const currentFace = prev[selectedFace];
+      const idx = currentFace.activeShapeIndex;
+      if (idx === null || idx === undefined) return prev;
+      const newShapes = [...currentFace.shapes];
+      newShapes[idx] = { ...newShapes[idx], ...updates };
+      return {
+        ...prev,
+        [selectedFace]: { ...currentFace, shapes: newShapes }
+      };
+    });
   };
 
   const handleDeleteShape = () => {
-    const idx = facesConfig[selectedFace].activeShapeIndex;
-    if (idx === null || idx === undefined) return;
-    const currentShapes = facesConfig[selectedFace].shapes.filter((_, i) => i !== idx);
-    updateFaceConfig('shapes', currentShapes);
-    updateFaceConfig('activeShapeIndex', null);
+    setFacesConfig(prev => {
+      const currentFace = prev[selectedFace];
+      const idx = currentFace.activeShapeIndex;
+      if (idx === null || idx === undefined) return prev;
+      const newShapes = currentFace.shapes.filter((_, i) => i !== idx);
+      return {
+        ...prev,
+        [selectedFace]: { ...currentFace, shapes: newShapes, activeShapeIndex: null }
+      };
+    });
   };
 
   const handleColorChange = (e) => updateFaceConfig('color', e.target.value);
@@ -155,6 +218,19 @@ export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, sel
     updateFaceConfig('textureUrl', null);
   };
 
+  const handleCopyFace = () => {
+    setClipboardFaceConfig(facesConfig[selectedFace]);
+  };
+
+  const handlePasteFace = () => {
+    if (clipboardFaceConfig) {
+      setFacesConfig(prev => ({
+        ...prev,
+        [selectedFace]: { ...clipboardFaceConfig }
+      }));
+    }
+  };
+
   const handleExportImage = () => {
     const canvasObj = document.querySelector("canvas");
     if (!canvasObj) return;
@@ -192,6 +268,25 @@ export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, sel
 
       <div className="flex-1 overflow-y-auto p-4 space-y-6 scrollbar-hide">
         
+        {/* Prominent Smart Scan Button */}
+        <div className="relative group cursor-pointer" onClick={() => smartScanInputRef.current?.click()}>
+           <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-500 to-indigo-500 rounded-xl blur opacity-30 group-hover:opacity-70 transition duration-300"></div>
+           <div className="relative bg-white dark:bg-slate-800 border border-indigo-100 dark:border-indigo-900/50 p-4 rounded-xl shadow-sm flex flex-col items-center justify-center gap-2 transition-transform group-hover:scale-[1.02]">
+             <span className="text-3xl">🤖</span>
+             <div className="text-center">
+               <h4 className="font-bold text-slate-800 dark:text-slate-100 text-sm">Smart Scan Net</h4>
+               <p className="text-[10px] text-slate-500 mt-1">อัปโหลดรูปคลี่ AI จะสร้าง 3D Box ให้ทันที!</p>
+             </div>
+           </div>
+           <input 
+             type="file" 
+             ref={smartScanInputRef} 
+             className="hidden" 
+             accept="image/*" 
+             onChange={handleSmartScan} 
+           />
+        </div>
+
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-slate-400 uppercase tracking-wider flex items-center gap-2">
@@ -215,28 +310,46 @@ export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, sel
               </button>
             </div>
           </div>
-          <div className="px-1 space-y-1">
-            <span className="text-[10px] uppercase font-bold text-slate-500">Select Net Form</span>
+          <div className="px-1 space-y-2">
+            <div className="flex items-center justify-between">
+               <span className="text-[10px] uppercase font-bold text-slate-500">Select Net Form</span>
+            </div>
             <NetSelector activeNetId={activeNetId} setActiveNetId={setActiveNetId} netFlipX={netFlipX} netFlipY={netFlipY} />
           </div>
         </div>
 
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
-              {t('face')} Customization
+            <h3 className="text-xs font-semibold text-slate-400 dark:text-slate-500 uppercase tracking-wider flex items-center gap-1">
+              {t('face')} Setup
+              <div className="flex gap-0.5 ml-1">
+                <button 
+                  onClick={undoFaces} disabled={!canUndo}
+                  className={`p-1 rounded ${canUndo ? 'text-indigo-600 hover:bg-slate-200 dark:text-indigo-400 dark:hover:bg-slate-700 cursor-pointer' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}`}
+                  title="Undo (Ctrl+Z)"
+                >
+                  <RotateCcw size={12} />
+                </button>
+                <button 
+                  onClick={redoFaces} disabled={!canRedo}
+                  className={`p-1 rounded ${canRedo ? 'text-indigo-600 hover:bg-slate-200 dark:text-indigo-400 dark:hover:bg-slate-700 cursor-pointer' : 'text-slate-300 dark:text-slate-600 cursor-not-allowed'}`}
+                  title="Redo (Ctrl+Shift+Z)"
+                >
+                  <RotateCw size={12} />
+                </button>
+              </div>
             </h3>
             <div className="flex gap-2">
               <button 
                 onClick={handleSetAllWhite}
-                className="text-xs px-2 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded font-bold shadow-sm hover:scale-105 transition-transform"
+                className="text-[10px] px-1.5 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600 rounded font-bold shadow-sm hover:bg-slate-50 transition-colors"
                 title="Set All Clear"
               >
                 ⚪
               </button>
               <button 
                 onClick={handleRandomize}
-                className="text-xs px-2 py-1 bg-gradient-to-r from-pink-500 to-orange-400 text-white rounded font-bold shadow hover:scale-105 transition-transform flex items-center gap-1"
+                className="text-[10px] px-1.5 py-1 bg-gradient-to-r from-pink-500 to-orange-400 text-white rounded font-bold shadow hover:scale-105 transition-transform flex items-center gap-1"
               >
                 🎲 {t('randomize')}
               </button>
@@ -246,8 +359,27 @@ export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, sel
           <div className="p-4 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl space-y-4 shadow-sm">
             
             {/* Active Face Indication */}
-            <div className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Editing Face:</span>
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Editing Face:</span>
+                <div className="flex bg-slate-200 dark:bg-slate-700/50 rounded-md p-0.5">
+                  <button 
+                    onClick={handleCopyFace}
+                    className="px-2 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-600 rounded shadow-sm transition-all"
+                    title="Copy Design"
+                  >
+                    Copy
+                  </button>
+                  <button 
+                    onClick={handlePasteFace}
+                    disabled={!clipboardFaceConfig}
+                    className={`px-2 py-0.5 text-[10px] font-bold rounded transition-all ${clipboardFaceConfig ? 'text-indigo-600 dark:text-indigo-400 hover:bg-white dark:hover:bg-slate-600 shadow-sm' : 'text-slate-400 dark:text-slate-600 cursor-not-allowed'}`}
+                    title="Paste Design"
+                  >
+                    Paste
+                  </button>
+                </div>
+              </div>
               <div className="px-3 py-2 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-100 dark:border-indigo-800 rounded-lg flex items-center justify-between">
                 <span className="text-sm font-semibold uppercase text-indigo-700 dark:text-indigo-400">
                   {selectedFace}

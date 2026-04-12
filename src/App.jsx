@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MainLayout from "./components/layout/MainLayout";
 import Scene from "./components/canvas/Scene";
 import Box from "./components/canvas/Box";
@@ -6,9 +6,11 @@ import Sidebar from "./components/layout/Sidebar";
 import ExportModal from "./components/ExportModal";
 import { AuthProvider } from './contexts/AuthContext';
 import { LanguageProvider, useLang } from './contexts/LanguageContext';
+import { ToastProvider } from './contexts/ToastContext';
 import AuthModal from './components/auth/AuthModal';
 import GalleryModal from './components/gallery/GalleryModal';
 import SettingsModal from './components/SettingsModal';
+import { useHistory } from './hooks/useHistory';
 
 function AppContent() {
   const { lang, setLang } = useLang();
@@ -18,11 +20,13 @@ function AppContent() {
   const [theme, setTheme] = useState("dark");
   const [showGrid, setShowGrid] = useState(true);
   const [showShadows, setShowShadows] = useState(true);
+  const [showLabels, setShowLabels] = useState(false);
   const [activeNetId, setActiveNetId] = useState(0); // Which of the 11 nets is active
   const [netFlipX, setNetFlipX] = useState(false);
   const [netFlipY, setNetFlipY] = useState(false);
   const [showExportModal, setShowExportModal] = useState(false);
   const [exportImageBlob, setExportImageBlob] = useState(null);
+  const [isAutoRotate, setIsAutoRotate] = useState(false);
   
   // Settings & Navigation States
   const [sidebarPosition, setSidebarPosition] = useState("left"); // "left" | "right"
@@ -32,15 +36,7 @@ function AppContent() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [showGalleryModal, setShowGalleryModal] = useState(false);
 
-  const handleLoadBox = (savedData) => {
-    if (savedData.facesConfig) setFacesConfig(savedData.facesConfig);
-    if (savedData.activeNetId !== undefined) setActiveNetId(savedData.activeNetId);
-    setNetFlipX(savedData.netFlipX || false);
-    setNetFlipY(savedData.netFlipY || false);
-    setFoldProgress(0); // reset fold so they can see net
-  };
-
-  const [facesConfig, setFacesConfig] = useState({
+  const [facesConfig, setFacesConfig, undoFaces, redoFaces, canUndo, canRedo] = useHistory({
     bottom: { color: "#ffffff", textureUrl: null, aiImageUrl: null, userImageUrl: null, rotation: 0, flipX: false, flipY: false, shapes: [], activeShapeIndex: null },
     top: { color: "#ffffff", textureUrl: null, aiImageUrl: null, userImageUrl: null, rotation: 0, flipX: false, flipY: false, shapes: [], activeShapeIndex: null },
     front: { color: "#ffffff", textureUrl: null, aiImageUrl: null, userImageUrl: null, rotation: 0, flipX: false, flipY: false, shapes: [], activeShapeIndex: null },
@@ -49,6 +45,26 @@ function AppContent() {
     right: { color: "#ffffff", textureUrl: null, aiImageUrl: null, userImageUrl: null, rotation: 0, flipX: false, flipY: false, shapes: [], activeShapeIndex: null },
   });
 
+  const handleLoadBox = (savedData) => {
+    if (savedData.facesConfig) setFacesConfig(savedData.facesConfig);
+    if (savedData.activeNetId !== undefined) setActiveNetId(savedData.activeNetId);
+    setNetFlipX(savedData.netFlipX || false);
+    setNetFlipY(savedData.netFlipY || false);
+    setFoldProgress(0); // reset fold so they can see net
+  };
+
+  // Keyboard listener for Undo/Redo
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+        if (e.shiftKey) redoFaces();
+        else undoFaces();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [undoFaces, redoFaces]);
+
   return (
     <>
       <MainLayout 
@@ -56,6 +72,10 @@ function AppContent() {
         setFoldProgress={setFoldProgress}
         facesConfig={facesConfig}
         setFacesConfig={setFacesConfig}
+        undoFaces={undoFaces}
+        redoFaces={redoFaces}
+        canUndo={canUndo}
+        canRedo={canRedo}
         selectedFace={selectedFace}
         setSelectedFace={setSelectedFace}
         sidebarPosition={sidebarPosition}
@@ -70,16 +90,23 @@ function AppContent() {
         setNetFlipX={setNetFlipX}
         netFlipY={netFlipY}
         setNetFlipY={setNetFlipY}
-      >
-        <Scene 
-          foldProgress={foldProgress} 
-          facesConfig={facesConfig} 
-          selectedFace={selectedFace}
-          setSelectedFace={setSelectedFace}
-          theme={theme}
-          showGrid={showGrid}
-          showShadows={showShadows}
+        isAutoRotate={isAutoRotate}
+        setIsAutoRotate={setIsAutoRotate}
         >
+          <Scene 
+            foldProgress={foldProgress} 
+            facesConfig={facesConfig} 
+            setFacesConfig={setFacesConfig}
+            selectedFace={selectedFace}
+            setSelectedFace={setSelectedFace}
+            setActiveNetId={setActiveNetId}
+            setNetFlipX={setNetFlipX}
+            setNetFlipY={setNetFlipY}
+            theme={theme}
+            showGrid={showGrid}
+            showShadows={showShadows}
+            isAutoRotate={isAutoRotate}
+          >
           <Box 
             foldProgress={foldProgress} 
             facesConfig={facesConfig} 
@@ -89,6 +116,7 @@ function AppContent() {
             activeNetId={activeNetId}
             netFlipX={netFlipX}
             netFlipY={netFlipY}
+            showLabels={showLabels}
           />
         </Scene>
         {showExportModal && (
@@ -105,6 +133,7 @@ function AppContent() {
         theme={theme} setTheme={setTheme}
         showGrid={showGrid} setShowGrid={setShowGrid}
         showShadows={showShadows} setShowShadows={setShowShadows}
+        showLabels={showLabels} setShowLabels={setShowLabels}
         sidebarPosition={sidebarPosition} setSidebarPosition={setSidebarPosition}
         lang={lang} setLang={setLang}
       />
@@ -118,7 +147,9 @@ function App() {
   return (
     <AuthProvider>
       <LanguageProvider>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
       </LanguageProvider>
     </AuthProvider>
   );

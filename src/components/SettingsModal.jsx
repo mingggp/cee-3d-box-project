@@ -7,6 +7,7 @@ export default function SettingsModal({
   theme, setTheme,
   showGrid, setShowGrid,
   showShadows, setShowShadows,
+  showLabels, setShowLabels,
   sidebarPosition, setSidebarPosition,
   lang, setLang
 }) {
@@ -73,6 +74,18 @@ export default function SettingsModal({
                 <input type="checkbox" className="sr-only" checked={showShadows} onChange={() => setShowShadows(!showShadows)} />
                 <div className={`block w-10 h-5 rounded-full transition-colors ${showShadows ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
                 <div className={`absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform ${showShadows ? 'translate-x-5' : ''}`}></div>
+              </div>
+            </label>
+
+            <label className="flex items-center justify-between cursor-pointer group">
+              <div className="flex items-center gap-3 text-sm font-medium text-slate-700 dark:text-slate-300 group-hover:text-indigo-500 transition-colors">
+                <PanelLeft size={18} className="text-pink-500" />
+                Show Face Labels
+              </div>
+              <div className="relative inline-block w-10 h-5">
+                <input type="checkbox" className="sr-only" checked={showLabels} onChange={() => setShowLabels(!showLabels)} />
+                <div className={`block w-10 h-5 rounded-full transition-colors ${showLabels ? 'bg-indigo-600' : 'bg-slate-300 dark:bg-slate-700'}`}></div>
+                <div className={`absolute left-1 top-1 bg-white w-3 h-3 rounded-full transition-transform ${showLabels ? 'translate-x-5' : ''}`}></div>
               </div>
             </label>
           </div>

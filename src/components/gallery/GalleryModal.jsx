@@ -2,9 +2,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
 import { getUserBoxes, deleteBox } from "../../services/db";
 import { X, Loader2, Trash2, Box, Calendar } from "lucide-react";
+import { useToast } from "../../contexts/ToastContext";
 
 export default function GalleryModal({ isOpen, onClose, onLoadBox }) {
   const { currentUser } = useAuth();
+  const toast = useToast();
   const [boxes, setBoxes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -21,22 +23,22 @@ export default function GalleryModal({ isOpen, onClose, onLoadBox }) {
       setBoxes(data);
     } catch (err) {
       console.error(err);
-      alert("Failed to load your gallery.");
+      toast('โหลด Gallery ไม่สำเร็จ', 'error');
     } finally {
       setLoading(false);
     }
   };
 
   const handleDelete = async (e, id) => {
-    e.stopPropagation(); // prevent triggering the load
-    if (!window.confirm("Are you sure you want to delete this design?")) return;
-    
+    e.stopPropagation();
+    if (!window.confirm('ต้องการลบดีไซน์นี้ใช่ไหม?')) return;
     try {
       await deleteBox(id);
       setBoxes(boxes.filter(b => b.id !== id));
+      toast('ลบสำเร็จแล้ว', 'success');
     } catch (err) {
       console.error(err);
-      alert("Failed to delete.");
+      toast('ลบไม่สำเร็จ กรุณาลองใหม่', 'error');
     }
   };
 
