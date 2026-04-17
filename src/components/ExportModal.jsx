@@ -52,29 +52,16 @@ export default function ExportModal({ exportImageBlob, onClose }) {
       let sWidth = img.width;
       let sHeight = img.height;
 
-      // Determine dimension of the CROP box
-      if (aspectRatio !== 'original') {
-        const ratioObj = Ratios[aspectRatio];
-        if (img.width / img.height > ratioObj) {
-          // Source is wider than ratio
-          sHeight = img.height;
-          sWidth = img.height * ratioObj;
-        } else {
-          // Source is taller than ratio
-          sWidth = img.width;
-          sHeight = img.width / ratioObj;
-        }
-        sx = (img.width - sWidth) / 2;
-        sy = (img.height - sHeight) / 2;
-        
-        exportW = sWidth;
-        exportH = sHeight;
+      // Use the visual crop box DOM size to exactly match what the user framed
+      const cropBox = document.getElementById('crop-box');
+      if (aspectRatio !== 'original' && cropBox) {
+        const cropRect = cropBox.getBoundingClientRect();
+        exportW = cropRect.width;
+        exportH = cropRect.height;
       }
 
-      // We want to export exactly the CROP box size
       canvas.width = exportW;
       canvas.height = exportH;
-      
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       
       // Move origin to center of Crop frame
@@ -168,7 +155,8 @@ export default function ExportModal({ exportImageBlob, onClose }) {
              <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
                 <div className="absolute inset-0 bg-black/60 z-0"></div>
                 <div 
-                  className="relative z-10 border-2 border-indigo-500 shadow-[0_0_0_9999px_rgba(0,0,0,0.6)] overflow-hidden flex items-center justify-center"
+                  id="crop-box"
+                  className="relative z-10 border-4 border-indigo-500 shadow-[0_0_0_9999px_rgba(0,0,0,0.7)] overflow-hidden flex items-center justify-center ring-2 ring-white/50"
                   style={getCropOverlayStyle()}
                 >
                    {/* We replicate the image inside the crop box to show it fully opaque! */}

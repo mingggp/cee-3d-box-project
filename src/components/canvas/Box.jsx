@@ -112,7 +112,7 @@ function FaceMaterial({ config, showShadows, isHovered, isSelected }) {
 }
 
 // Recursive algorithm for processing arbitrary folding nets!
-function FaceNode({ node, angle, facesConfig, getBinds, showShadows, showLabels, selectedFace, hoveredFace, netFlipX, netFlipY }) {
+function FaceNode({ node, angle, facesConfig, getBinds, showShadows, showLabels, selectedFace, hoveredFace, netFlipX, netFlipY, hideHighlights }) {
   // Determine folding mappings strictly relative to parent's MESH CENTER
   const getMappings = (edge) => {
     let logicalEdge = edge;
@@ -140,13 +140,13 @@ function FaceNode({ node, angle, facesConfig, getBinds, showShadows, showLabels,
   const isSelected = selectedFace === node.id;
   const isHovered = hoveredFace === node.id;
 
-  // Visual selection borders (keep as an extra inner/outer glow)
-  const drawEdges = (isSelected || isHovered) && (
+  // Only show edges when NOT capturing a snapshot
+  const drawEdges = !hideHighlights && (isSelected || isHovered) && (
     <Edges 
+      name="highlight-edge"
       scale={isSelected ? 1.02 : 1.01} 
       color={isSelected ? "#ec4899" : "#a5b4fc"} 
       threshold={15} 
-      visible={true}
     />
   );
 
@@ -194,6 +194,7 @@ function FaceNode({ node, angle, facesConfig, getBinds, showShadows, showLabels,
                hoveredFace={hoveredFace}
                netFlipX={netFlipX}
                netFlipY={netFlipY}
+               hideHighlights={hideHighlights}
              />
           ))}
         </group>
@@ -202,7 +203,7 @@ function FaceNode({ node, angle, facesConfig, getBinds, showShadows, showLabels,
   );
 }
 
-export default function Box({ foldProgress = 1, facesConfig, selectedFace, setSelectedFace, showShadows, showLabels, activeNetId = 0, netFlipX = false, netFlipY = false }) {
+export default function Box({ foldProgress = 1, facesConfig, selectedFace, setSelectedFace, showShadows, showLabels, activeNetId = 0, netFlipX = false, netFlipY = false, hideHighlights = false }) {
   const [hoveredFace, setHoveredFace] = useState(null);
 
   const getBinds = (faceId) => ({
@@ -244,6 +245,7 @@ export default function Box({ foldProgress = 1, facesConfig, selectedFace, setSe
          hoveredFace={hoveredFace}
          netFlipX={netFlipX}
          netFlipY={netFlipY}
+         hideHighlights={hideHighlights}
        />
     </group>
   );

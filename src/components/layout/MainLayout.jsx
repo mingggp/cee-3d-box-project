@@ -71,7 +71,7 @@ export default function MainLayout({ children, foldProgress, setFoldProgress, fa
           <div className="flex gap-2">
             <button
               onClick={() => setIsAutoRotate(!isAutoRotate)}
-              className={`pointer-events-auto flex items-center gap-2 px-3 py-2 rounded-lg border transition-all font-medium text-xs md:text-sm shadow-sm ${isAutoRotate ? 'bg-indigo-500 text-white border-indigo-400' : 'bg-white/10 hover:bg-white/20 text-white border-white/20 backdrop-blur-sm'}`}
+              className={`pointer-events-auto flex items-center gap-2 px-3 py-2 rounded-lg border transition-all font-medium text-xs md:text-sm shadow-sm ${isAutoRotate ? 'bg-indigo-500 text-white border-indigo-400' : 'bg-white/80 hover:bg-white text-slate-700 border-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-800 dark:text-slate-200 dark:border-slate-700 backdrop-blur-sm'}`}
               title="หมุนอัตโนมัติ"
             >
               <Rotate3D size={16} className={isAutoRotate ? "animate-spin" : ""} style={{ animationDuration: '3s' }} />
@@ -80,7 +80,7 @@ export default function MainLayout({ children, foldProgress, setFoldProgress, fa
 
             <button
               onClick={handleResetCamera}
-              className="pointer-events-auto flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white backdrop-blur-sm px-3 py-2 rounded-lg border border-white/20 transition-all font-medium text-xs md:text-sm shadow-sm"
+              className="pointer-events-auto flex items-center gap-2 bg-white/80 hover:bg-white text-slate-700 border-slate-200 dark:bg-slate-800/80 dark:hover:bg-slate-800 dark:text-slate-200 dark:border-slate-700 backdrop-blur-sm px-3 py-2 rounded-lg border transition-all font-medium text-xs md:text-sm shadow-sm"
             >
               <Focus size={16} />
               <span className="hidden md:inline">รีเซ็ตมุมกล้อง</span>

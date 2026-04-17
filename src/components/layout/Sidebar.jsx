@@ -1,5 +1,5 @@
 import { Cuboid, PaintBucket, Download, Settings, X, SlidersHorizontal, ImagePlus, Trash2, FlipHorizontal, FlipVertical, RotateCcw, RotateCw, Moon, Sun, Grid3x3, LightbulbOff, Lightbulb, Square, Circle, Star, Trash, Wand2, Loader2, AlertCircle, Save, LogOut, LogIn, Image as ImageIcon } from "lucide-react";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import NetSelector from "../NetSelector";
 import { useAuth } from "../../contexts/AuthContext";
 import { saveBoxConfig } from "../../services/db";
@@ -231,11 +231,18 @@ export default function Sidebar({ closeSidebar, facesConfig, setFacesConfig, und
     }
   };
 
+  // Custom event listener for snapshot
+  useEffect(() => {
+    const onSnapshotReady = (e) => {
+      onExport(e.detail);
+    };
+    window.addEventListener('snapshot-ready', onSnapshotReady);
+    return () => window.removeEventListener('snapshot-ready', onSnapshotReady);
+  }, [onExport]);
+
   const handleExportImage = () => {
-    const canvasObj = document.querySelector("canvas");
-    if (!canvasObj) return;
-    const image = canvasObj.toDataURL("image/png");
-    onExport(image);
+    // Trigger the snapshot helper inside Scene.jsx which will safely hide UI and capture
+    window.dispatchEvent(new CustomEvent('trigger-snapshot'));
   };
 
   return (

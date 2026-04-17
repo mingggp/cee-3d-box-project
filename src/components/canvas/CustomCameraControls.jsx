@@ -23,6 +23,8 @@ export default function CustomCameraControls({
   orbitSpeed = 0.006,
   pinchOrbitSpeed = 0.008,
   rollSensitivity = 1.0,
+  isAutoRotate = false,
+  autoRotateSpeed = 2.0,
 }) {
   const { camera, gl } = useThree();
   const targetV = useRef(new THREE.Vector3(...target));
@@ -212,8 +214,16 @@ export default function CustomCameraControls({
     };
   }, [gl, minDistance, maxDistance, orbitSpeed, pinchOrbitSpeed, rollSensitivity]); // eslint-disable-line
 
-  useFrame(() => {
+  useFrame((stateObj, delta) => {
     const s = state.current;
+    
+    if (isAutoRotate) {
+      const angle = delta * autoRotateSpeed * 0.1;
+      const yaw = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), angle);
+      s.dir.applyQuaternion(yaw).normalize();
+      s.up.applyQuaternion(yaw).normalize();
+    }
+
     if (s.dir.length() < 0.5) s.dir.set(0, 0, 1);
     s.dir.normalize();
     s.up.normalize();

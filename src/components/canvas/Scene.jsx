@@ -1,11 +1,36 @@
-import { useRef, useEffect } from "react";
-import { Canvas, useThree } from "@react-three/fiber";
+import React, { useRef, useEffect, useState, useCallback } from "react";
+import { Canvas, useThree, useFrame } from "@react-three/fiber";
 import { Environment, Grid } from "@react-three/drei";
 import * as THREE from 'three';
 import { analyzeNetImage } from "../../utils/SmartNetAnalyzer";
 import { useToast } from "../../contexts/ToastContext";
 import CustomCameraControls from "./CustomCameraControls";
 import Box from "./Box";
+
+// Simple helper that lives inside R3F context and can directly access gl
+function SnapshotCapture({ onCapture }) {
+  const { gl } = useThree();
+  const pendingCapture = useRef(false);
+
+  useEffect(() => {
+    const handleCapture = () => {
+      pendingCapture.current = true;
+    };
+    window.addEventListener('trigger-snapshot-frame', handleCapture);
+    return () => window.removeEventListener('trigger-snapshot-frame', handleCapture);
+  }, []);
+
+  useFrame(() => {
+    if (pendingCapture.current) {
+      pendingCapture.current = false;
+      // R3F has just rendered this frame — grab the buffer now
+      const image = gl.domElement.toDataURL("image/png");
+      onCapture(image);
+    }
+  });
+
+  return null;
+}
 
 function CanvasDropHandler({ setFacesConfig, setActiveNetId, setNetFlipX, setNetFlipY }) {
   const { camera, scene, raycaster } = useThree();
@@ -96,10 +121,42 @@ function CanvasDropHandler({ setFacesConfig, setActiveNetId, setNetFlipX, setNet
   return null;
 }
 
-export default function Scene({ children, theme, showGrid, showShadows, isAutoRotate, setFacesConfig, setActiveNetId, setNetFlipX, setNetFlipY }) {
+export default function Scene({ children, theme, showGrid, showShadows, isAutoRotate, setFacesConfig, setActiveNetId, setNetFlipX, setNetFlipY, selectedFace, setSelectedFace }) {
+  const [hideHighlights, setHideHighlights] = useState(false);
+
+  // Listen for trigger-snapshot: hide highlights, wait a tick for React render, fire capture, restore
+  useEffect(() => {
+    const handleTrigger = () => {
+      setHideHighlights(true);
+      // After React renders with hideHighlights=true (no pink edges),
+      // dispatch trigger-snapshot-frame so SnapshotCapture grabs it
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          window.dispatchEvent(new Event('trigger-snapshot-frame'));
+        });
+      });
+    };
+    window.addEventListener('trigger-snapshot', handleTrigger);
+    return () => window.removeEventListener('trigger-snapshot', handleTrigger);
+  }, []);
+
+  const handleCaptured = useCallback((image) => {
+    setHideHighlights(false);
+    window.dispatchEvent(new CustomEvent('snapshot-ready', { detail: image }));
+  }, []);
+
+  // Clone children and inject hideHighlights prop
+  const childrenWithProp = typeof children === 'object'
+    ? React.Children.map(children, child =>
+        child ? React.cloneElement(child, { hideHighlights }) : child
+      )
+    : children;
   return (
     <div className="w-full h-full">
       <Canvas camera={{ position: [8, 6, 9], fov: 45 }} shadows={showShadows} gl={{ preserveDrawingBuffer: true }}>
+        {/* Helper to capture reliable snapshots without UI */}
+        <SnapshotCapture onCapture={handleCaptured} />
+        
         {/* Environment and Lighting */}
         <color attach="background" args={[theme === 'dark' ? '#0f172a' : '#f8fafc']} />
         <ambientLight intensity={showShadows ? 0.5 : 1} />
@@ -123,17 +180,17 @@ export default function Scene({ children, theme, showGrid, showShadows, isAutoRo
         )}
 
         {/* Scene Objects */}
-        {children}
+        {childrenWithProp}
 
         {/* Floor and Grid */}
         {showGrid && (
           <Grid
             infiniteGrid
-            fadeDistance={30}
-            sectionThickness={1}
-            cellThickness={0.5}
-            sectionColor={theme === 'dark' ? "#334155" : "#cbd5e1"}
-            cellColor={theme === 'dark' ? "#1e293b" : "#e2e8f0"}
+            fadeDistance={40}
+            sectionThickness={1.2}
+            cellThickness={0.8}
+            sectionColor={theme === 'dark' ? "#475569" : "#94a3b8"}
+            cellColor={theme === 'dark' ? "#334155" : "#cbd5e1"}
             position={[0, -0.02, 0]}
           />
         )}
@@ -152,6 +209,7 @@ export default function Scene({ children, theme, showGrid, showShadows, isAutoRo
           maxDistance={20}
           orbitSpeed={0.006}
           trackballSpeed={2.0}
+          isAutoRotate={isAutoRotate}
         />
       </Canvas>
     </div>

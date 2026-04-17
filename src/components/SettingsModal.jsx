@@ -18,10 +18,10 @@ export default function SettingsModal({
   return (
     <>
       <div 
-        className="fixed inset-0 z-[100] bg-slate-900/40 backdrop-blur-sm transition-opacity" 
+        className="fixed inset-0 z-[100]" 
         onClick={onClose}
       ></div>
-      <div className={`fixed inset-y-0 ${sidebarPosition === 'right' ? 'left-0' : 'right-0'} z-[110] w-80 bg-white dark:bg-slate-900 shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800 transform animate-in ${sidebarPosition === 'right' ? 'slide-in-from-left' : 'slide-in-from-right'} duration-300`}>
+      <div className={`fixed top-24 ${sidebarPosition === 'right' ? 'left-6' : 'right-6'} md:top-24 md:${sidebarPosition === 'right' ? 'left-10' : 'right-10'} z-[110] w-80 max-w-[90vw] bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-2xl rounded-2xl flex flex-col border border-slate-200 dark:border-slate-800 transform animate-in fade-in zoom-in-95 duration-200`}>
         
         {/* Header */}
         <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-white dark:bg-slate-900">
